@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kcfg xmlns="http://www.kde.org/standards/kcfg/1.0"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.kde.org/standards/kcfg/1.0
+      http://www.kde.org/standards/kcfg/1.0/kcfg.xsd" >
+  <group name="Wallpaper">
+    <entry name="ImageSource" type="String">
+      <label>Path to current wallpaper image</label>
+      <default>/usr/share/wallpapers/Next/contents/images/3840x2160.png</default>
+    </entry>
+    <entry name="LocalDirectory" type="String">
+      <label>Directory to load wallpapers from</label>
+      <default>/usr/share/wallpapers/</default>
+    </entry>
+    <entry name="RotationInterval" type="Int">
+      <label>Rotation Interval (minutes)</label>
+      <default>1</default>
+    </entry>
+    <entry name="AppliedEffect" type="String">
+      <label>Selected Effect</label>
+      <default>none</default>
+    </entry>
+  </group>
+</kcfg>
