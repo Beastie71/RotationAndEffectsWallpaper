@@ -1,7 +1,7 @@
 {
     "KPackageStructure": "Plasma/Wallpaper",
     "KPlugin": {
-        "Id": "RotationAndEffects",
+        "Id": "org.kde.plasma.rotationandeffects",
         "Name": "Rotation and Effects Wallpaper",
         "Description": "A KDE 6 wallpaper plugin with Python-based rotation and effects logic",
         "Icon": "preferences-desktop-wallpaper",

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Configuration
-PLUGIN_ID="RotationAndEffects"
+PLUGIN_ID="org.kde.plasma.rotationandeffects"
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -60,4 +60,4 @@ kbuildsycoca6 --noincremental &> /dev/null
 echo -e "${GREEN}Installation finished successfully.${NC}"
 echo -e "${YELLOW}MANUAL ACTION REQUIRED:${NC}"
 echo "1. Run: plasmashell --replace &"
-echo "2. Check for errors: journalctl -f | grep RotationAndEffects"
+echo "2. Check for errors: journalctl -f | grep rotationandeffects"

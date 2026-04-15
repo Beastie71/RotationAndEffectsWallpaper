@@ -10,6 +10,17 @@ WallpaperItem {
     
     readonly property var config: root.configuration
     
+    Component.onCompleted: {
+        console.log("org.kde.plasma.rotationandeffects: main.qml loaded");
+        if (config) {
+            console.log("org.kde.plasma.rotationandeffects: Config keys: " + Object.keys(config));
+            console.log("org.kde.plasma.rotationandeffects: Current Directory: " + config.LocalDirectory);
+            console.log("org.kde.plasma.rotationandeffects: Current Effect: " + config.AppliedEffect);
+        } else {
+            console.error("org.kde.plasma.rotationandeffects: Configuration object is null!");
+        }
+    }
+
     // Background layer
     Rectangle {
         anchors.fill: parent
@@ -19,18 +30,12 @@ WallpaperItem {
     
     property real rotationProgress: 0.0
     
-    // Check for incremental effects
     readonly property bool isIncrementalEffect: {
         if (!config) return false;
         let effect = config.AppliedEffect;
         return effect === "shrink" || effect === "blur_over_time" || effect === "darken_over_time";
     }
 
-    // DISCRETE SHRINK LOGIC
-    // 0-25% time: 1.0 scale
-    // 25-50% time: 0.75 scale (25% smaller)
-    // 50-75% time: 0.50 scale (50% smaller)
-    // 75-100% time: 0.25 scale (75% smaller)
     readonly property real discreteScale: {
         if (rotationProgress < 0.25) return 1.0;
         if (rotationProgress < 0.50) return 0.75;
@@ -44,7 +49,7 @@ WallpaperItem {
         property: "rotationProgress"
         from: 0.0
         to: 1.0
-        duration: Math.max(1000, (config.RotationInterval || 1) * 60000)
+        duration: Math.max(1000, (config ? (config.RotationInterval || 1) : 1) * 60000)
         running: isIncrementalEffect
         loops: Animation.Infinite
     }
@@ -52,7 +57,7 @@ WallpaperItem {
     Image {
         id: wallpaperImage
         anchors.fill: parent
-        source: config.ImageSource ? ("file://" + config.ImageSource + "?" + Math.random()) : ""
+        source: (config && config.ImageSource) ? ("file://" + config.ImageSource + "?" + Math.random()) : ""
         fillMode: Image.PreserveAspectCrop
         asynchronous: true
         visible: false
@@ -60,6 +65,8 @@ WallpaperItem {
         onStatusChanged: {
             if (status === Image.Error) {
                 console.error("org.kde.plasma.rotationandeffects: Image load error: " + source);
+            } else if (status === Image.Ready) {
+                console.log("org.kde.plasma.rotationandeffects: Image loaded successfully");
             }
         }
 
@@ -76,27 +83,23 @@ WallpaperItem {
     Item {
         id: imageContainer
         anchors.fill: parent
-        
-        // Apply the discrete scale only if 'shrink' is selected
-        scale: config.AppliedEffect === "shrink" ? discreteScale : 1.0
+        scale: (config && config.AppliedEffect === "shrink") ? discreteScale : 1.0
         transformOrigin: Item.Center
 
         MultiEffect {
             source: wallpaperImage
             anchors.fill: parent
-            
-            // Continuous blur/darken if those are selected
-            blurEnabled: config.AppliedEffect === "blur_over_time"
+            blurEnabled: config && config.AppliedEffect === "blur_over_time"
             blurMax: 64
             blur: rotationProgress
-            brightness: config.AppliedEffect === "darken_over_time" ? -rotationProgress : 0.0
+            brightness: (config && config.AppliedEffect === "darken_over_time") ? -rotationProgress : 0.0
         }
     }
 
     ParticleSystem {
         id: rainParticles
         anchors.fill: parent
-        running: config.AppliedEffect === "rain"
+        running: config && config.AppliedEffect === "rain"
         visible: running
         Emitter {
             anchors.fill: parent
@@ -118,7 +121,8 @@ WallpaperItem {
             let output = (data.stdout || "").trim();
             if (output && (output.startsWith("/") || output.startsWith("file://"))) {
                 let cleanPath = output.replace(/^file:\/\//, "");
-                config.ImageSource = cleanPath;
+                if (config) config.ImageSource = cleanPath;
+                console.log("org.kde.plasma.rotationandeffects: New path: " + cleanPath);
             }
             disconnectSource(sourceName);
         }
@@ -126,34 +130,20 @@ WallpaperItem {
 
     Timer {
         id: rotationTimer
-        interval: Math.max(60000, (config.RotationInterval || 1) * 60000)
+        interval: Math.max(60000, (config ? (config.RotationInterval || 1) : 1) * 60000)
         running: true
         repeat: true
         triggeredOnStart: true
         onTriggered: {
+            if (!config) return;
             try {
                 let rawUrl = Qt.resolvedUrl("../code/backend.py").toString();
                 let scriptPath = rawUrl.replace(/^file:\/\//, "");
                 let command = `python3 "${scriptPath}" --directory "${config.LocalDirectory}" --effect "${config.AppliedEffect}"`;
+                console.log("org.kde.plasma.rotationandeffects: Running backend: " + command);
                 pythonBackend.connectSource(command);
             } catch (e) {
                 console.error("org.kde.plasma.rotationandeffects: Timer Error: " + e.message);
-            }
-        }
-    }
-    
-    Connections {
-        target: config
-        function onRotationIntervalChanged() {
-            rotationTimer.restart();
-            if (isIncrementalEffect) progressAnimation.restart();
-        }
-        function onAppliedEffectChanged() {
-            if (isIncrementalEffect) {
-                progressAnimation.restart();
-            } else {
-                progressAnimation.stop();
-                rotationProgress = 0.0;
             }
         }
     }
