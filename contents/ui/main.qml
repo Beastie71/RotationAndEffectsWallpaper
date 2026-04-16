@@ -56,28 +56,47 @@ WallpaperItem {
         loops: Animation.Infinite
     }
     
+    property string _pendingSource: ""
+
+    SequentialAnimation {
+        id: fadeOutAnimation
+        NumberAnimation { target: imageContainer; property: "opacity"; to: 0.0; duration: 2000; easing.type: Easing.InOutQuad }
+        ScriptAction {
+            script: {
+                if (config.ImageSource === _pendingSource) {
+                    config.ImageSource = ""; // Force reload
+                }
+                config.ImageSource = _pendingSource;
+                _pendingSource = "";
+            }
+        }
+    }
+
+    NumberAnimation {
+        id: fadeInAnimation
+        target: imageContainer
+        property: "opacity"
+        to: 1.0
+        duration: 2000
+        easing.type: Easing.InOutQuad
+    }
+
     Image {
         id: wallpaperImage
         anchors.fill: parent
         source: (config && config.ImageSource) ? ("file://" + config.ImageSource + "?" + Math.random()) : ""
         fillMode: Image.PreserveAspectCrop
         asynchronous: true
-        visible: source != ""
+        visible: false // Hidden because it's the source for MultiEffect
         
         onStatusChanged: {
             if (status === Image.Error) {
                 if (source != "") console.error("org.kde.plasma.rotationandeffects: Image load error: " + source);
             } else if (status === Image.Ready) {
                 console.log("org.kde.plasma.rotationandeffects: Image loaded successfully");
-            }
-        }
-
-        Behavior on source {
-            SequentialAnimation {
-                NumberAnimation { target: imageContainer; property: "opacity"; from: 1.0; to: 0.0; duration: 250 }
-                PropertyAction { target: root; property: "rotationProgress"; value: 0.0 }
-                ScriptAction { script: if (isIncrementalEffect) progressAnimation.restart(); }
-                NumberAnimation { target: imageContainer; property: "opacity"; from: 0.0; to: 1.0; duration: 250 }
+                if (imageContainer.opacity === 0) {
+                    fadeInAnimation.restart();
+                }
             }
         }
     }
@@ -87,7 +106,8 @@ WallpaperItem {
         anchors.fill: parent
         scale: (config && config.AppliedEffect === "shrink") ? discreteScale : 1.0
         transformOrigin: Item.Center
-        visible: wallpaperImage.status === Image.Ready
+        visible: (wallpaperImage.status === Image.Ready) || (opacity > 0)
+        opacity: 1.0
 
         MultiEffect {
             source: wallpaperImage
@@ -129,7 +149,14 @@ WallpaperItem {
                 
                 if (output && (output.startsWith("/") || output.startsWith("file://"))) {
                     let cleanPath = output.replace(/^file:\/\//, "");
-                    if (config) config.ImageSource = cleanPath;
+                    if (config) {
+                        if (config.ImageSource === "") {
+                            config.ImageSource = cleanPath;
+                        } else if (config.ImageSource !== cleanPath) {
+                            root._pendingSource = cleanPath;
+                            fadeOutAnimation.restart();
+                        }
+                    }
                     console.log("org.kde.plasma.rotationandeffects: New path: " + cleanPath);
                 } else {
                     console.warn("org.kde.plasma.rotationandeffects: Unexpected backend output: " + output);

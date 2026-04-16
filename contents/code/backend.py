@@ -5,6 +5,8 @@ import random
 import argparse
 import tempfile
 import logging
+import hashlib
+import getpass
 
 # Configure logging to stderr so it shows up in Plasma logs
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s', stream=sys.stderr)
@@ -65,12 +67,22 @@ def apply_effect(image_path, effect):
             sepia_img = ImageOps.colorize(sepia_img, "#704214", "#C0A080")
             img = sepia_img
 
-        # Use a more unique temp filename to avoid permission issues
-        import getpass
-        username = getpass.getuser()
-        temp_dir = tempfile.gettempdir()
-        # Include effect and username in the filename
-        output_path = os.path.join(temp_dir, f"plasma_wallpaper_{username}_{effect}.png")
+        # Determine the best place for temporary processed images
+        runtime_dir = os.environ.get('XDG_RUNTIME_DIR')
+        if runtime_dir and os.path.isdir(runtime_dir):
+            temp_root = os.path.join(runtime_dir, 'rotationandeffectswallpaper')
+        else:
+            temp_root = os.path.join(tempfile.gettempdir(), f"rotationandeffectswallpaper_{getpass.getuser()}")
+        
+        try:
+            os.makedirs(temp_root, exist_ok=True)
+        except Exception:
+            temp_root = tempfile.gettempdir()
+
+        # Hash the source path to create a unique filename for this source/effect combo
+        # This ensures that when we rotate to a new image, the path is definitely different
+        path_hash = hashlib.md5(image_path.encode()).hexdigest()[:10]
+        output_path = os.path.join(temp_root, f"wallpaper_{effect}_{path_hash}.png")
         
         try:
             img.save(output_path, "PNG")

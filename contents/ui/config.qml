@@ -19,7 +19,7 @@ ColumnLayout {
     // Automatic configuration mapping (cfg_ prefix)
     property alias cfg_LocalDirectory: directoryField.text
     property alias cfg_RotationInterval: intervalSpin.value
-    property alias cfg_AppliedEffect: effectField.text
+    property string cfg_AppliedEffect
 
     spacing: 0
 
@@ -40,10 +40,27 @@ ColumnLayout {
             to: 60
         }
 
-        Controls.TextField {
-            id: effectField
+        Controls.ComboBox {
+            id: effectCombo
             Kirigami.FormData.label: "Applied Effect:"
             Layout.fillWidth: true
+            
+            model: [
+                { text: "None", value: "none" },
+                { text: "Blur (Static)", value: "blur" },
+                { text: "Grayscale (Static)", value: "grayscale" },
+                { text: "Sepia (Static)", value: "sepia" },
+                { text: "Rain (Overlay)", value: "rain" },
+                { text: "Shrink (Animated)", value: "shrink" },
+                { text: "Blur (Animated)", value: "blur_over_time" },
+                { text: "Darken (Animated)", value: "darken_over_time" }
+            ]
+            
+            textRole: "text"
+            valueRole: "value"
+
+            currentIndex: indexOfValue(root.cfg_AppliedEffect)
+            onActivated: root.cfg_AppliedEffect = currentValue
         }
     }
 
