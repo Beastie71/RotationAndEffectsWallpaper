@@ -6,11 +6,11 @@
   <group name="Wallpaper">
     <entry name="ImageSource" type="String">
       <label>Path to current wallpaper image</label>
-      <default>/usr/share/wallpapers/Next/contents/images/3840x2160.png</default>
+      <default></default>
     </entry>
     <entry name="LocalDirectory" type="String">
       <label>Directory to load wallpapers from</label>
-      <default>/usr/share/wallpapers/</default>
+      <default></default>
     </entry>
     <entry name="RotationInterval" type="Int">
       <label>Rotation Interval (minutes)</label>

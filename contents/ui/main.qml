@@ -2,12 +2,14 @@ import QtQuick
 import QtQuick.Layouts
 import QtQuick.Particles
 import QtQuick.Effects
+import org.kde.plasma.core as PlasmaCore
 import org.kde.plasma.plasmoid
 import org.kde.plasma.plasma5support as Plasma5Support
 
 WallpaperItem {
     id: root
     
+    // In Plasma 6, the configuration object is provided by WallpaperItem
     readonly property var config: root.configuration
     
     Component.onCompleted: {
@@ -60,11 +62,11 @@ WallpaperItem {
         source: (config && config.ImageSource) ? ("file://" + config.ImageSource + "?" + Math.random()) : ""
         fillMode: Image.PreserveAspectCrop
         asynchronous: true
-        visible: false
+        visible: source != ""
         
         onStatusChanged: {
             if (status === Image.Error) {
-                console.error("org.kde.plasma.rotationandeffects: Image load error: " + source);
+                if (source != "") console.error("org.kde.plasma.rotationandeffects: Image load error: " + source);
             } else if (status === Image.Ready) {
                 console.log("org.kde.plasma.rotationandeffects: Image loaded successfully");
             }
@@ -85,6 +87,7 @@ WallpaperItem {
         anchors.fill: parent
         scale: (config && config.AppliedEffect === "shrink") ? discreteScale : 1.0
         transformOrigin: Item.Center
+        visible: wallpaperImage.status === Image.Ready
 
         MultiEffect {
             source: wallpaperImage
@@ -118,11 +121,19 @@ WallpaperItem {
         engine: "executable"
         connectedSources: []
         onNewData: (sourceName, data) => {
-            let output = (data.stdout || "").trim();
-            if (output && (output.startsWith("/") || output.startsWith("file://"))) {
-                let cleanPath = output.replace(/^file:\/\//, "");
-                if (config) config.ImageSource = cleanPath;
-                console.log("org.kde.plasma.rotationandeffects: New path: " + cleanPath);
+            let stdout = (data.stdout || "").trim();
+            if (stdout) {
+                // Take the last line in case there's noise on stdout
+                let lines = stdout.split("\n");
+                let output = lines[lines.length - 1].trim();
+                
+                if (output && (output.startsWith("/") || output.startsWith("file://"))) {
+                    let cleanPath = output.replace(/^file:\/\//, "");
+                    if (config) config.ImageSource = cleanPath;
+                    console.log("org.kde.plasma.rotationandeffects: New path: " + cleanPath);
+                } else {
+                    console.warn("org.kde.plasma.rotationandeffects: Unexpected backend output: " + output);
+                }
             }
             disconnectSource(sourceName);
         }

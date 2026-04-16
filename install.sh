@@ -48,6 +48,14 @@ echo "Installing new version from current directory..."
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 kpackagetool6 --type Plasma/Wallpaper --install "$SCRIPT_DIR"
 
+if [ $? -ne 0 ]; then
+    echo -e "${YELLOW}kpackagetool6 reported an error, attempting manual installation...${NC}"
+    INSTALL_PATH="$HOME/.local/share/plasma/wallpapers/$PLUGIN_ID"
+    mkdir -p "$INSTALL_PATH"
+    cp -r "$SCRIPT_DIR"/* "$INSTALL_PATH/"
+    echo -e "${GREEN}Manual copy to $INSTALL_PATH successful.${NC}"
+fi
+
 # 3. Permissions
 chmod +x "$SCRIPT_DIR/contents/code/backend.py"
 

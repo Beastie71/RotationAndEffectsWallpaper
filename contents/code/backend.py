@@ -50,6 +50,7 @@ def apply_effect(image_path, effect):
         return image_path
 
     if not HAS_PILLOW:
+        logging.warning("Pillow not available, returning original image.")
         return image_path
 
     # Actually process the image
@@ -64,9 +65,19 @@ def apply_effect(image_path, effect):
             sepia_img = ImageOps.colorize(sepia_img, "#704214", "#C0A080")
             img = sepia_img
 
+        # Use a more unique temp filename to avoid permission issues
+        import getpass
+        username = getpass.getuser()
         temp_dir = tempfile.gettempdir()
-        output_path = os.path.join(temp_dir, f"plasma_wallpaper_{effect}.png")
-        img.save(output_path, "PNG")
+        # Include effect and username in the filename
+        output_path = os.path.join(temp_dir, f"plasma_wallpaper_{username}_{effect}.png")
+        
+        try:
+            img.save(output_path, "PNG")
+        except Exception as e:
+            logging.error(f"Failed to save processed image to {output_path}: {e}")
+            raise
+            
         return output_path
 
 def main():
@@ -75,13 +86,14 @@ def main():
     parser.add_argument("--effect", default="none", help="Effect to apply")
     args = parser.parse_args()
 
-    directory = os.path.expanduser(args.directory)
+    # Expand user paths (e.g., ~)
+    directory = os.path.abspath(os.path.expanduser(args.directory))
     all_images = get_all_wallpapers(directory)
     
     if not all_images:
         logging.error(f"No valid images found in {directory}")
-        # Try a system default as absolute last resort
-        print("/usr/share/wallpapers/Next/contents/images/3840x2160.png")
+        # Return empty string to signal no image found
+        print("")
         return
 
     errors = []
@@ -101,13 +113,15 @@ def main():
             errors.append(error_msg)
             logging.warning(error_msg)
 
-    # If we reached here, all attempts failed
-    logging.error("Failed to load a wallpaper after multiple attempts.")
-    for err in errors:
-        logging.error(f"  - {err}")
+    # If we reached here, all attempts failed to process the image
+    logging.error("Failed to process any wallpaper after multiple attempts.")
     
-    # Print fallback so the desktop isn't blank
-    print("/usr/share/wallpapers/Next/contents/images/3840x2160.png")
+    # If we have images but processing failed, fall back to the first raw image
+    if all_images:
+        logging.info(f"Falling back to raw image: {all_images[0]}")
+        print(all_images[0])
+    else:
+        print("")
 
 if __name__ == "__main__":
     main()
