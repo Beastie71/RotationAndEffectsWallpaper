@@ -14,7 +14,9 @@
     </entry>
     <entry name="RotationInterval" type="Int">
       <label>Rotation Interval (minutes)</label>
-      <default>1</default>
+      <default>15</default>
+      <min>1</min>
+      <max>1440</max>
     </entry>
     <entry name="AppliedEffect" type="String">
       <label>Selected Effect</label>

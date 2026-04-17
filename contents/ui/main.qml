@@ -103,7 +103,8 @@ WallpaperItem {
     Image {
         id: wallpaperImage
         anchors.fill: parent
-        source: (config && config.ImageSource) ? ("file://" + config.ImageSource + "?" + Math.random()) : ""
+        // Backend now handles unique filenames via hashing, so we don't need random query strings
+        source: (config && config.ImageSource) ? ("file://" + config.ImageSource) : ""
         fillMode: Image.PreserveAspectCrop
         asynchronous: true
         visible: false // Hidden because it's the source for MultiEffect
@@ -128,9 +129,19 @@ WallpaperItem {
         visible: (wallpaperImage.status === Image.Ready) || (opacity > 0)
         opacity: 0.0
 
+        // Optimized static display when no animated effects are active
+        Image {
+            anchors.fill: parent
+            source: wallpaperImage.source
+            fillMode: Image.PreserveAspectCrop
+            visible: !root.isIncrementalEffect && (wallpaperImage.status === Image.Ready)
+        }
+
         MultiEffect {
             source: wallpaperImage
             anchors.fill: parent
+            // Only enable MultiEffect features if an animated effect is active
+            enabled: root.isIncrementalEffect
             blurEnabled: config && config.AppliedEffect === "blur_over_time"
             blurMax: 64
             blur: rotationProgress
@@ -146,12 +157,16 @@ WallpaperItem {
         Emitter {
             anchors.fill: parent
             anchors.topMargin: -100
-            emitRate: 200
-            lifeSpan: 2000
-            velocity: AngleDirection { angle: 85; magnitude: 800 }
+            emitRate: 40 // Reduced from 200 for better performance
+            lifeSpan: 1500
+            velocity: AngleDirection { angle: 90; magnitude: 1000; magnitudeVariation: 100 }
         }
         ItemParticle {
-            delegate: Rectangle { width: 1; height: 15; color: "white"; opacity: 0.3 }
+            delegate: Rectangle { 
+                width: 1; height: 20 
+                color: "white"
+                opacity: 0.2
+            }
         }
     }
 

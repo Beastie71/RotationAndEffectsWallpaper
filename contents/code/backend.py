@@ -7,6 +7,7 @@ import tempfile
 import logging
 import hashlib
 import getpass
+import time
 
 # Configure logging to stderr so it shows up in Plasma logs
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s', stream=sys.stderr)
@@ -37,6 +38,21 @@ def get_all_wallpapers(directory):
         logging.error(f"Error scanning directory: {e}")
     
     return images
+
+def cleanup_temp_files(temp_root, max_age_seconds=7200):
+    """Deletes temporary files older than max_age_seconds (default 2 hours)."""
+    if not os.path.exists(temp_root):
+        return
+    
+    now = time.time()
+    try:
+        for f in os.listdir(temp_root):
+            f_path = os.path.join(temp_root, f)
+            if os.path.isfile(f_path) and f.startswith("wp_"):
+                if os.stat(f_path).st_mtime < (now - max_age_seconds):
+                    os.remove(f_path)
+    except Exception as e:
+        logging.warning(f"Cleanup failed: {e}")
 
 def apply_effect(image_path, effect):
     """
@@ -76,16 +92,22 @@ def apply_effect(image_path, effect):
         
         try:
             os.makedirs(temp_root, exist_ok=True)
+            cleanup_temp_files(temp_root) # Run cleanup during processing
         except Exception:
             temp_root = tempfile.gettempdir()
 
-        # Hash the source path to create a unique filename for this source/effect combo
-        # This ensures that when we rotate to a new image, the path is definitely different
-        path_hash = hashlib.md5(image_path.encode()).hexdigest()[:10]
-        output_path = os.path.join(temp_root, f"wallpaper_{effect}_{path_hash}.png")
+        # Hash source path + effect + mtime to create a unique but stable filename
+        mtime = os.path.getmtime(image_path)
+        path_hash = hashlib.md5(f"{image_path}_{effect}_{mtime}".encode()).hexdigest()[:12]
+        output_path = os.path.join(temp_root, f"wp_{path_hash}.jpg")
         
+        # Cache hit: Return existing file
+        if os.path.exists(output_path):
+            return output_path
+
         try:
-            img.save(output_path, "PNG")
+            # JPEG is much faster to encode/decode than PNG for wallpapers
+            img.save(output_path, "JPEG", quality=95)
         except Exception as e:
             logging.error(f"Failed to save processed image to {output_path}: {e}")
             raise
@@ -98,8 +120,19 @@ def main():
     parser.add_argument("--effect", default="none", help="Effect to apply")
     args = parser.parse_args()
 
+    if not args.directory:
+        logging.error("No directory specified.")
+        print("")
+        return
+
     # Expand user paths (e.g., ~)
     directory = os.path.abspath(os.path.expanduser(args.directory))
+    
+    if not os.path.isdir(directory):
+        logging.error(f"Provided path is not a directory: {directory}")
+        print("")
+        return
+
     all_images = get_all_wallpapers(directory)
     
     if not all_images:
