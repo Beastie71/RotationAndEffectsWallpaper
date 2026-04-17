@@ -29,14 +29,26 @@ WallpaperItem {
         color: "black"
         z: -1
     }
+
+    Connections {
+        target: root.configuration
+        function onAppliedEffectChanged() {
+            progressAnimation.stop();
+            root.rotationProgress = 0.0;
+            if (root.isIncrementalEffect && imageContainer.opacity > 0) {
+                progressAnimation.restart();
+            }
+        }
+        function onRotationIntervalChanged() {
+            if (progressAnimation.running) {
+                progressAnimation.restart();
+            }
+        }
+    }
     
     property real rotationProgress: 0.0
     
-    readonly property bool isIncrementalEffect: {
-        if (!config) return false;
-        let effect = config.AppliedEffect;
-        return effect === "shrink" || effect === "blur_over_time" || effect === "darken_over_time";
-    }
+    readonly property bool isIncrementalEffect: config && (config.AppliedEffect === "shrink" || config.AppliedEffect === "blur_over_time" || config.AppliedEffect === "darken_over_time")
 
     readonly property real discreteScale: {
         if (rotationProgress < 0.25) return 1.0;
@@ -53,7 +65,7 @@ WallpaperItem {
         to: 1.0
         duration: Math.max(1000, (config ? (config.RotationInterval || 1) : 1) * 60000)
         running: isIncrementalEffect
-        loops: Animation.Infinite
+        loops: 1
     }
     
     property string _pendingSource: ""
@@ -63,6 +75,8 @@ WallpaperItem {
         NumberAnimation { target: imageContainer; property: "opacity"; to: 0.0; duration: 2000; easing.type: Easing.InOutQuad }
         ScriptAction {
             script: {
+                progressAnimation.stop();
+                root.rotationProgress = 0.0;
                 if (config.ImageSource === _pendingSource) {
                     config.ImageSource = ""; // Force reload
                 }
@@ -79,6 +93,11 @@ WallpaperItem {
         to: 1.0
         duration: 2000
         easing.type: Easing.InOutQuad
+        onFinished: {
+            if (root.isIncrementalEffect) {
+                progressAnimation.restart();
+            }
+        }
     }
 
     Image {
@@ -107,7 +126,7 @@ WallpaperItem {
         scale: (config && config.AppliedEffect === "shrink") ? discreteScale : 1.0
         transformOrigin: Item.Center
         visible: (wallpaperImage.status === Image.Ready) || (opacity > 0)
-        opacity: 1.0
+        opacity: 0.0
 
         MultiEffect {
             source: wallpaperImage
