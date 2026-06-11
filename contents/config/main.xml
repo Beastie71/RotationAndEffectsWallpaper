@@ -28,5 +28,17 @@
       <min>50</min>
       <max>5000</max>
     </entry>
+    <entry name="MeltingColumns" type="Int">
+      <label>Melting Column Count</label>
+      <default>100</default>
+      <min>10</min>
+      <max>500</max>
+    </entry>
+    <entry name="AnimationFrameRate" type="Int">
+      <label>Animation Frame Rate (FPS)</label>
+      <default>15</default>
+      <min>1</min>
+      <max>60</max>
+    </entry>
   </group>
 </kcfg>

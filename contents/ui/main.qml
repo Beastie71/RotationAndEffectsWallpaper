@@ -48,7 +48,7 @@ WallpaperItem {
     
     property real rotationProgress: 0.0
     
-    readonly property bool isIncrementalEffect: config && (config.AppliedEffect === "shrink" || config.AppliedEffect === "blur_over_time" || config.AppliedEffect === "darken_over_time" || config.AppliedEffect === "decay_over_time")
+    readonly property bool isIncrementalEffect: config && (config.AppliedEffect === "shrink" || config.AppliedEffect === "blur_over_time" || config.AppliedEffect === "darken_over_time" || config.AppliedEffect === "decay_over_time" || config.AppliedEffect === "melting")
 
     readonly property real discreteScale: {
         if (rotationProgress < 0.25) return 1.0;
@@ -57,15 +57,40 @@ WallpaperItem {
         return 0.25;
     }
 
-    NumberAnimation {
+    Timer {
         id: progressAnimation
-        target: root
-        property: "rotationProgress"
-        from: 0.0
-        to: 1.0
-        duration: Math.max(1000, (config ? (config.RotationInterval || 1) : 1) * 60000)
+        
+        readonly property int fps: config ? (config.AnimationFrameRate || 15) : 15
+        interval: Math.max(16, Math.round(1000 / fps))
+        
         running: isIncrementalEffect
-        loops: 1
+        repeat: true
+        triggeredOnStart: false
+        
+        property real durationMs: Math.max(1000, (config ? (config.RotationInterval || 1) : 1) * 60000)
+        property real elapsedMs: 0
+        
+        onTriggered: {
+            elapsedMs += interval;
+            if (elapsedMs >= durationMs) {
+                root.rotationProgress = 1.0;
+                stop();
+            } else {
+                root.rotationProgress = elapsedMs / durationMs;
+            }
+        }
+        
+        function restart() {
+            elapsedMs = 0;
+            root.rotationProgress = 0.0;
+            start();
+        }
+        
+        onRunningChanged: {
+            if (!running && elapsedMs < durationMs) {
+                elapsedMs = 0;
+            }
+        }
     }
     
     property string _pendingSource: ""
@@ -126,7 +151,7 @@ WallpaperItem {
         anchors.fill: parent
         scale: (config && config.AppliedEffect === "shrink") ? discreteScale : 1.0
         transformOrigin: Item.Center
-        visible: (wallpaperImage.status === Image.Ready) || (opacity > 0)
+        visible: ((wallpaperImage.status === Image.Ready) || (opacity > 0)) && (config && config.AppliedEffect !== "melting")
         opacity: 0.0
 
         // Optimized static display when no animated effects are active
@@ -146,6 +171,74 @@ WallpaperItem {
             blurMax: 64
             blur: rotationProgress
             brightness: (config && config.AppliedEffect === "darken_over_time") ? -rotationProgress : 0.0
+        }
+    }
+
+    // GPU-Accelerated Melting Column Slices
+    Loader {
+        id: meltingEffectLoader
+        anchors.fill: parent
+        active: config && config.AppliedEffect === "melting"
+        visible: active
+
+        sourceComponent: Component {
+            Item {
+                id: meltingLayoutContainer
+                anchors.fill: parent
+                readonly property int colCount: config ? (config.MeltingColumns || 100) : 100
+
+                Item {
+                    anchors.fill: parent
+
+                    Repeater {
+                        model: meltingLayoutContainer.colCount
+                        delegate: Image {
+                            id: columnStrip
+                            width: root.width / meltingLayoutContainer.colCount
+                            height: root.height
+                            x: index * width
+                            y: {
+                                let progress = root.rotationProgress;
+                                if (progress < 0.05) return 0;
+                                let activeProgress = (progress - 0.05) / 0.95;
+                                return Math.pow(activeProgress, 3) * root.height * speedFactor;
+                            }
+
+                            // Deterministic speed multiplier per column
+                            readonly property real speedFactor: {
+                                let hash = Math.sin(index * 12.9898) * 43758.5453;
+                                return 0.6 + 0.8 * (hash - Math.floor(hash));
+                            }
+
+                            source: wallpaperImage.source
+                            asynchronous: false
+                            
+                            sourceClipRect: {
+                                if (!wallpaperImage.sourceSize.width) return Qt.rect(0, 0, 0, 0);
+                                let srcColWidth = wallpaperImage.sourceSize.width / meltingLayoutContainer.colCount;
+                                return Qt.rect(index * srcColWidth, 0, srcColWidth, wallpaperImage.sourceSize.height);
+                            }
+                        }
+                    }
+                }
+
+                // Dark accumulation puddle at the bottom
+                Rectangle {
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    height: {
+                        let progress = root.rotationProgress;
+                        if (progress < 0.05) return 0;
+                        let activeProgress = (progress - 0.05) / 0.95;
+                        return Math.pow(activeProgress, 2) * 120;
+                    }
+                    gradient: Gradient {
+                        GradientStop { position: 0.0; color: "transparent" }
+                        GradientStop { position: 1.0; color: "black" }
+                    }
+                }
+            }
         }
     }
 
