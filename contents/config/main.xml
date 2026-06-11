@@ -22,5 +22,11 @@
       <label>Selected Effect</label>
       <default>none</default>
     </entry>
+    <entry name="StaticInterval" type="Int">
+      <label>Static Update Interval (ms)</label>
+      <default>1000</default>
+      <min>50</min>
+      <max>5000</max>
+    </entry>
   </group>
 </kcfg>

@@ -48,7 +48,7 @@ WallpaperItem {
     
     property real rotationProgress: 0.0
     
-    readonly property bool isIncrementalEffect: config && (config.AppliedEffect === "shrink" || config.AppliedEffect === "blur_over_time" || config.AppliedEffect === "darken_over_time")
+    readonly property bool isIncrementalEffect: config && (config.AppliedEffect === "shrink" || config.AppliedEffect === "blur_over_time" || config.AppliedEffect === "darken_over_time" || config.AppliedEffect === "decay_over_time")
 
     readonly property real discreteScale: {
         if (rotationProgress < 0.25) return 1.0;
@@ -146,6 +146,39 @@ WallpaperItem {
             blurMax: 64
             blur: rotationProgress
             brightness: (config && config.AppliedEffect === "darken_over_time") ? -rotationProgress : 0.0
+        }
+    }
+
+    // TV static/grain overlay for decay_over_time effect
+    Item {
+        id: noiseOverlay
+        anchors.fill: parent
+        visible: config && config.AppliedEffect === "decay_over_time"
+        opacity: root.rotationProgress * 0.65
+        z: 10 // Force rendering on top of the wallpaper and transitions
+
+        Image {
+            id: noiseImage
+            source: "noise.png"
+            fillMode: Image.Tile
+            width: parent.width + 128
+            height: parent.height + 128
+
+            property int offsetX: 0
+            property int offsetY: 0
+            x: -64 + offsetX
+            y: -64 + offsetY
+        }
+
+        Timer {
+            id: staticTimer
+            interval: config ? (config.StaticInterval || 1000) : 1000
+            running: noiseOverlay.visible && root.rotationProgress > 0
+            repeat: true
+            onTriggered: {
+                noiseImage.offsetX = Math.floor(Math.random() * 64);
+                noiseImage.offsetY = Math.floor(Math.random() * 64);
+            }
         }
     }
 

@@ -19,6 +19,7 @@ ColumnLayout {
     // Automatic configuration mapping (cfg_ prefix)
     property alias cfg_LocalDirectory: directoryField.text
     property alias cfg_RotationInterval: intervalSpin.value
+    property alias cfg_StaticInterval: staticIntervalSpin.value
     property string cfg_AppliedEffect
 
     spacing: 0
@@ -53,7 +54,8 @@ ColumnLayout {
                 { text: "Rain (Overlay)", value: "rain" },
                 { text: "Shrink (Animated)", value: "shrink" },
                 { text: "Blur (Animated)", value: "blur_over_time" },
-                { text: "Darken (Animated)", value: "darken_over_time" }
+                { text: "Darken (Animated)", value: "darken_over_time" },
+                { text: "Decay (Animated)", value: "decay_over_time" }
             ]
             
             textRole: "text"
@@ -61,6 +63,15 @@ ColumnLayout {
 
             currentIndex: indexOfValue(root.cfg_AppliedEffect)
             onActivated: root.cfg_AppliedEffect = currentValue
+        }
+
+        Controls.SpinBox {
+            id: staticIntervalSpin
+            Kirigami.FormData.label: "Static Speed (ms):"
+            from: 50
+            to: 5000
+            stepSize: 50
+            visible: effectCombo.currentValue === "decay_over_time"
         }
     }
 
