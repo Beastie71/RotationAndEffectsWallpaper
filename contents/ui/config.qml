@@ -92,6 +92,7 @@ ColumnLayout {
             Layout.fillWidth: true
             
             model: [
+                { text: "Almost Dead Lowest (1 FPS - Eco)", value: 1 },
                 { text: "Very Low (5 FPS - Eco)", value: 5 },
                 { text: "Low (10 FPS)", value: 10 },
                 { text: "Medium (15 FPS - Recommended)", value: 15 },
