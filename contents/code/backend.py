@@ -1,4 +1,17 @@
 #!/usr/bin/env python3
+# Copyright 2026 Michael Letourneau
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import sys
 import os
 import random
@@ -25,10 +38,10 @@ def get_all_wallpapers(directory):
     if not os.path.exists(directory):
         logging.error(f"Directory does not exist: {directory}")
         return []
-        
+
     supported_extensions = ('.png', '.jpg', '.jpeg', '.webp')
     images = []
-    
+
     try:
         for root, dirs, files in os.walk(directory):
             for file in files:
@@ -36,14 +49,14 @@ def get_all_wallpapers(directory):
                     images.append(os.path.join(root, file))
     except Exception as e:
         logging.error(f"Error scanning directory: {e}")
-    
+
     return images
 
 def cleanup_temp_files(temp_root, max_age_seconds=7200):
     """Deletes temporary files older than max_age_seconds (default 2 hours)."""
     if not os.path.exists(temp_root):
         return
-    
+
     now = time.time()
     try:
         for f in os.listdir(temp_root):
@@ -64,7 +77,7 @@ def apply_effect(image_path, effect):
     if effect in qml_effects:
         # Just verify we can open it
         with Image.open(image_path) as img:
-            img.verify() 
+            img.verify()
         return image_path
 
     if not HAS_PILLOW:
@@ -89,7 +102,7 @@ def apply_effect(image_path, effect):
             temp_root = os.path.join(runtime_dir, 'rotationandeffectswallpaper')
         else:
             temp_root = os.path.join(tempfile.gettempdir(), f"rotationandeffectswallpaper_{getpass.getuser()}")
-        
+
         try:
             os.makedirs(temp_root, exist_ok=True)
             cleanup_temp_files(temp_root) # Run cleanup during processing
@@ -100,7 +113,7 @@ def apply_effect(image_path, effect):
         mtime = os.path.getmtime(image_path)
         path_hash = hashlib.md5(f"{image_path}_{effect}_{mtime}".encode()).hexdigest()[:12]
         output_path = os.path.join(temp_root, f"wp_{path_hash}.jpg")
-        
+
         # Cache hit: Return existing file
         if os.path.exists(output_path):
             return output_path
@@ -111,7 +124,7 @@ def apply_effect(image_path, effect):
         except Exception as e:
             logging.error(f"Failed to save processed image to {output_path}: {e}")
             raise
-            
+
         return output_path
 
 def main():
@@ -127,14 +140,14 @@ def main():
 
     # Expand user paths (e.g., ~)
     directory = os.path.abspath(os.path.expanduser(args.directory))
-    
+
     if not os.path.isdir(directory):
         logging.error(f"Provided path is not a directory: {directory}")
         print("")
         return
 
     all_images = get_all_wallpapers(directory)
-    
+
     if not all_images:
         logging.error(f"No valid images found in {directory}")
         # Return empty string to signal no image found
@@ -143,10 +156,10 @@ def main():
 
     errors = []
     max_retries = 4
-    
+
     # Shuffle to get random order for retries
     random.shuffle(all_images)
-    
+
     for i in range(min(len(all_images), max_retries + 1)):
         current_image = all_images[i]
         try:
@@ -160,7 +173,7 @@ def main():
 
     # If we reached here, all attempts failed to process the image
     logging.error("Failed to process any wallpaper after multiple attempts.")
-    
+
     # If we have images but processing failed, fall back to the first raw image
     if all_images:
         logging.info(f"Falling back to raw image: {all_images[0]}")
