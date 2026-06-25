@@ -71,7 +71,8 @@ ColumnLayout {
                 { text: "Blur (Animated)", value: "blur_over_time" },
                 { text: "Darken (Animated)", value: "darken_over_time" },
                 { text: "Decay (Animated)", value: "decay_over_time" },
-                { text: "Melting (Animated)", value: "melting" }
+                { text: "Melting (Animated)", value: "melting" },
+                { text: "Pixelate (Animated)", value: "pixelate" }
             ]
             
             textRole: "text"
@@ -105,6 +106,7 @@ ColumnLayout {
             Layout.fillWidth: true
             
             model: [
+                { text: "Discrete Steps (25%, 50%, 75%)", value: 0 },
                 { text: "Almost Dead Lowest (1 FPS - Eco)", value: 1 },
                 { text: "Very Low (5 FPS - Eco)", value: 5 },
                 { text: "Low (10 FPS)", value: 10 },
@@ -123,7 +125,8 @@ ColumnLayout {
                      effectCombo.currentValue === "blur_over_time" || 
                      effectCombo.currentValue === "darken_over_time" || 
                      effectCombo.currentValue === "decay_over_time" || 
-                     effectCombo.currentValue === "melting"
+                     effectCombo.currentValue === "melting" ||
+                     effectCombo.currentValue === "pixelate"
         }
     }
 

@@ -61,20 +61,32 @@ WallpaperItem {
     
     property real rotationProgress: 0.0
     
-    readonly property bool isIncrementalEffect: config && (config.AppliedEffect === "shrink" || config.AppliedEffect === "blur_over_time" || config.AppliedEffect === "darken_over_time" || config.AppliedEffect === "decay_over_time" || config.AppliedEffect === "melting")
+    // Step progress mapper (0%, 25%, 50%, 75%)
+    readonly property real effectiveProgress: {
+        if (config && config.AnimationFrameRate === 0) {
+            let p = rotationProgress;
+            if (p < 0.25) return 0.0;
+            if (p < 0.50) return 0.25;
+            if (p < 0.75) return 0.50;
+            return 0.75;
+        }
+        return rotationProgress;
+    }
+    
+    readonly property bool isIncrementalEffect: config && (config.AppliedEffect === "shrink" || config.AppliedEffect === "blur_over_time" || config.AppliedEffect === "darken_over_time" || config.AppliedEffect === "decay_over_time" || config.AppliedEffect === "melting" || config.AppliedEffect === "pixelate")
 
     readonly property real discreteScale: {
-        if (rotationProgress < 0.25) return 1.0;
-        if (rotationProgress < 0.50) return 0.75;
-        if (rotationProgress < 0.75) return 0.50;
+        if (effectiveProgress < 0.25) return 1.0;
+        if (effectiveProgress < 0.50) return 0.75;
+        if (effectiveProgress < 0.75) return 0.50;
         return 0.25;
     }
 
     Timer {
         id: progressAnimation
         
-        readonly property int fps: config ? (config.AnimationFrameRate || 15) : 15
-        interval: Math.max(16, Math.round(1000 / fps))
+        readonly property int fps: config ? (config.AnimationFrameRate !== undefined ? config.AnimationFrameRate : 15) : 15
+        interval: fps === 0 ? 1000 : Math.max(16, Math.round(1000 / fps))
         
         running: isIncrementalEffect
         repeat: true
@@ -179,11 +191,63 @@ WallpaperItem {
             source: wallpaperImage
             anchors.fill: parent
             // Only enable MultiEffect features if an animated effect is active
-            enabled: root.isIncrementalEffect
+            enabled: root.isIncrementalEffect && (config.AppliedEffect === "blur_over_time" || config.AppliedEffect === "darken_over_time")
+            visible: enabled
             blurEnabled: config && config.AppliedEffect === "blur_over_time"
             blurMax: 64
-            blur: rotationProgress
-            brightness: (config && config.AppliedEffect === "darken_over_time") ? -rotationProgress : 0.0
+            blur: effectiveProgress
+            brightness: (config && config.AppliedEffect === "darken_over_time") ? -effectiveProgress : 0.0
+        }
+
+        ShaderEffectSource {
+            id: pixelationEffect
+            anchors.fill: parent
+            sourceItem: wallpaperImage
+            live: false // Disable automatic tracking to manually control updates
+            smooth: false
+            visible: config && config.AppliedEffect === "pixelate"
+            
+            // Force redraw when rotation progress updates
+            Connections {
+                target: root
+                function onRotationProgressChanged() {
+                    if (pixelationEffect.visible) {
+                        pixelationEffect.scheduleUpdate();
+                    }
+                }
+            }
+
+            // Force redraw when a new wallpaper image is loaded and ready
+            Connections {
+                target: wallpaperImage
+                function onStatusChanged() {
+                    if (wallpaperImage.status === Image.Ready && pixelationEffect.visible) {
+                        pixelationEffect.scheduleUpdate();
+                    }
+                }
+            }
+
+            // Force redraw when the effect becomes visible
+            onVisibleChanged: {
+                if (visible) {
+                    scheduleUpdate();
+                }
+            }
+
+            textureSize: {
+                if (!config || config.AppliedEffect !== "pixelate" || root.width <= 0 || root.height <= 0) {
+                    return Qt.size(0, 0);
+                }
+                let p = root.effectiveProgress;
+                let minW = 16;
+                let minH = Math.max(9, Math.round(minW * (root.height / root.width)));
+                
+                let factor = Math.pow(1.0 - p, 3.0); 
+                let w = minW + (root.width - minW) * factor;
+                let h = minH + (root.height - minH) * factor;
+                
+                return Qt.size(Math.round(w), Math.round(h));
+            }
         }
     }
 
@@ -211,7 +275,7 @@ WallpaperItem {
                             height: root.height
                             x: index * width
                             y: {
-                                let progress = root.rotationProgress;
+                                let progress = root.effectiveProgress;
                                 if (progress < 0.05) return 0;
                                 let activeProgress = (progress - 0.05) / 0.95;
                                 return Math.pow(activeProgress, 3) * root.height * speedFactor;
@@ -241,7 +305,7 @@ WallpaperItem {
                     anchors.right: parent.right
                     anchors.bottom: parent.bottom
                     height: {
-                        let progress = root.rotationProgress;
+                        let progress = root.effectiveProgress;
                         if (progress < 0.05) return 0;
                         let activeProgress = (progress - 0.05) / 0.95;
                         return Math.pow(activeProgress, 2) * 120;
@@ -260,7 +324,7 @@ WallpaperItem {
         id: noiseOverlay
         anchors.fill: parent
         visible: config && config.AppliedEffect === "decay_over_time"
-        opacity: root.rotationProgress * 0.65
+        opacity: root.effectiveProgress * 0.65
         z: 10 // Force rendering on top of the wallpaper and transitions
 
         Image {

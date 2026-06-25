@@ -73,7 +73,7 @@ def apply_effect(image_path, effect):
     Returns the path to the processed image in /tmp.
     Raises an exception if processing fails.
     """
-    qml_effects = ("none", "rain", "shrink", "blur_over_time", "darken_over_time", "decay_over_time", "melting")
+    qml_effects = ("none", "rain", "shrink", "blur_over_time", "darken_over_time", "decay_over_time", "melting", "pixelate")
     if effect in qml_effects:
         # Just verify we can open it
         with Image.open(image_path) as img:
